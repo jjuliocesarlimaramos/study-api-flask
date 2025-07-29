@@ -1,11 +1,24 @@
+
+import json
+import os
 from flask import Flask, request, redirect, url_for, render_template_string
 
 app = Flask(__name__)
 
-# Simulando um banco de dados com uma lista
-usuarios = []
+ARQUIVO_USUARIOS = 'usuarios.json'
 
-# Página inicial com lista de usuários
+def carregar_usuarios():
+    if os.path.exists(ARQUIVO_USUARIOS):
+        with open(ARQUIVO_USUARIOS, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    return []
+
+def salvar_usuarios():
+    with open(ARQUIVO_USUARIOS, 'w', encoding='utf-8') as f:
+        json.dump(usuarios, f, ensure_ascii=False, indent=4)
+
+usuarios = carregar_usuarios()
+
 @app.route('/')
 def index():
     return render_template_string('''
@@ -22,7 +35,6 @@ def index():
         </ul>
     ''', usuarios=usuarios)
 
-# Formulário para criar usuário
 @app.route('/novo', methods=['GET'])
 def form_criar():
     return render_template_string('''
@@ -35,7 +47,6 @@ def form_criar():
         <a href="{{ url_for('index') }}">Voltar</a>
     ''')
 
-# Criar usuário via formulário
 @app.route('/novo', methods=['POST'])
 def criar_usuario_web():
     nome = request.form['nome']
@@ -46,9 +57,9 @@ def criar_usuario_web():
         "email": email
     }
     usuarios.append(novo_usuario)
+    salvar_usuarios()
     return redirect(url_for('index'))
 
-# Formulário para editar usuário
 @app.route('/editar/<int:id_usuario>', methods=['GET'])
 def form_editar(id_usuario):
     usuario = next((u for u in usuarios if u['id'] == id_usuario), None)
@@ -64,7 +75,6 @@ def form_editar(id_usuario):
         <a href="{{ url_for('index') }}">Voltar</a>
     ''', usuario=usuario)
 
-# Atualizar usuário via formulário
 @app.route('/editar/<int:id_usuario>', methods=['POST'])
 def editar_usuario_web(id_usuario):
     for usuario in usuarios:
@@ -72,16 +82,15 @@ def editar_usuario_web(id_usuario):
             usuario['nome'] = request.form['nome']
             usuario['email'] = request.form['email']
             break
+    salvar_usuarios()
     return redirect(url_for('index'))
 
-# Deletar usuário via link
 @app.route('/excluir/<int:id_usuario>')
 def deletar_usuario_web(id_usuario):
     global usuarios
     usuarios = [u for u in usuarios if u['id'] != id_usuario]
+    salvar_usuarios()
     return redirect(url_for('index'))
 
-# Iniciar o servidor
 if __name__ == '__main__':
     app.run(debug=True)
-    
